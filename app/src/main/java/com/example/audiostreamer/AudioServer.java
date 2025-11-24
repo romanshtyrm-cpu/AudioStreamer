@@ -1,7 +1,7 @@
 package com.example.audiostreamer;
 
+import android.media.AudioAttributes;
 import android.media.AudioFormat;
-import android.media.AudioManager;
 import android.media.AudioTrack;
 import android.util.Log;
 
@@ -27,25 +27,36 @@ public class AudioServer extends Thread {
                 InputStream inputStream = client.getInputStream();
 
                 int sampleRate = 16000;
-                int bufferSize = AudioTrack.getMinBufferSize(sampleRate,
-                        AudioFormat.CHANNEL_OUT_MONO,
-                        AudioFormat.ENCODING_PCM_16BIT);
-
-                AudioTrack audioTrack = new AudioTrack(
-                        AudioManager.STREAM_MUSIC,
+                int bufferSize = AudioTrack.getMinBufferSize(
                         sampleRate,
                         AudioFormat.CHANNEL_OUT_MONO,
-                        AudioFormat.ENCODING_PCM_16BIT,
-                        bufferSize,
-                        AudioTrack.MODE_STREAM
+                        AudioFormat.ENCODING_PCM_16BIT
                 );
+
+                AudioTrack audioTrack = new AudioTrack.Builder()
+                        .setAudioAttributes(
+                                new AudioAttributes.Builder()
+                                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                                        .build()
+                        )
+                        .setAudioFormat(
+                                new AudioFormat.Builder()
+                                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                                        .setSampleRate(sampleRate)
+                                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                                        .build()
+                        )
+                        .setBufferSizeInBytes(bufferSize)
+                        .setTransferMode(AudioTrack.MODE_STREAM)
+                        .build();
 
                 audioTrack.play();
 
                 byte[] buffer = new byte[bufferSize];
-
                 int bytesRead;
-                while ((bytesRead = inputStream.read(buffer)) != -1) {
+
+                while ((bytesRead = inputStream.read(buffer)) != -1 && running) {
                     audioTrack.write(buffer, 0, bytesRead);
                 }
 
