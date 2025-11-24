@@ -1,69 +1,57 @@
 package com.example.audiostreamer;
 
 import android.media.AudioFormat;
-import android.media.AudioRecord;
-import android.media.MediaRecorder;
-import android.util.Log;
-
-import java.io.OutputStream;
-import java.net.InetAddress;
+import android.media.AudioManager;
+import android.media.AudioTrack;
+import java.io.InputStream;
 import java.net.Socket;
 
 public class AudioClient extends Thread {
 
-    private String serverIP;
-    private static final int PORT = 50005;
-    private volatile boolean running = true;
+    private final String serverIp;
+    private final int port;
 
-    public AudioClient(String serverIP) {
-        this.serverIP = serverIP;
+    public AudioClient(String serverIp, int port) {
+        this.serverIp = serverIp;
+        this.port = port;
     }
 
     @Override
     public void run() {
         try {
-            InetAddress serverAddr = InetAddress.getByName(serverIP);
-            Socket socket = new Socket(serverAddr, PORT);
-            OutputStream outputStream = socket.getOutputStream();
+            Socket socket = new Socket(serverIp, port);
+            InputStream inputStream = socket.getInputStream();
 
-            int sampleRate = 16000;
-
-            int bufferSize = AudioRecord.getMinBufferSize(
-                    sampleRate,
-                    AudioFormat.CHANNEL_IN_MONO,
+            int bufferSize = AudioTrack.getMinBufferSize(
+                    8000,
+                    AudioFormat.CHANNEL_OUT_MONO,
                     AudioFormat.ENCODING_PCM_16BIT
             );
 
-            AudioRecord audioRecord = new AudioRecord(
-                    MediaRecorder.AudioSource.MIC,
-                    sampleRate,
-                    AudioFormat.CHANNEL_IN_MONO,
+            AudioTrack audioTrack = new AudioTrack(
+                    AudioManager.STREAM_MUSIC,
+                    8000,
+                    AudioFormat.CHANNEL_OUT_MONO,
                     AudioFormat.ENCODING_PCM_16BIT,
-                    bufferSize
+                    bufferSize,
+                    AudioTrack.MODE_STREAM
             );
 
-            audioRecord.startRecording();
-            Log.d("AudioClient", "Recording started…");
+            audioTrack.play();
 
             byte[] buffer = new byte[bufferSize];
+            int bytesRead;
 
-            while (running) {
-                int bytesRead = audioRecord.read(buffer, 0, buffer.length);
-                if (bytesRead > 0) {
-                    outputStream.write(buffer, 0, bytesRead);
-                }
+            while ((bytesRead = inputStream.read(buffer)) > 0) {
+                audioTrack.write(buffer, 0, bytesRead);
             }
 
-            audioRecord.stop();
-            audioRecord.release();
+            audioTrack.stop();
+            audioTrack.release();
             socket.close();
 
         } catch (Exception e) {
-            Log.e("AudioClient", "Error: " + e.getMessage());
+            e.printStackTrace();
         }
-    }
-
-    public void stopClient() {
-        running = false;
     }
 }
