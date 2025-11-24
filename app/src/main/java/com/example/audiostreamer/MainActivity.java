@@ -21,7 +21,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Start Server
         btnStartServer.setOnClickListener(v -> {
-            AudioServer server = new AudioServer(PORT);
+            AudioServer server = new AudioServer();
             server.start();
         });
 
